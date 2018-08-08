@@ -1,0 +1,36 @@
+<Catalog>
+  <Building id="solidWall">
+    <name>Wall</name>
+    <icon>sprites/wall</icon>
+    <class>Foundation</class>
+    <material>materials/wall</material>
+  </Building>
+  <Building id="gateway">
+    <name>Gateway</name>
+    <icon>sprites/gateway</icon>
+    <class>Gateway</class>
+    <material>materials/gateway</material>
+  </Building>
+<!--  <Building id="storage">
+    <name>Storage</name>
+    <icon>sprites/storage</icon>
+    <class>Wall</class>
+  </Building>
+  <Building id="battlements">
+    <name>Battlements</name>
+    <icon>sprites/battlements</icon>
+    <class>Wall</class>
+  </Building>-->
+  <TileTerrain id="plains">
+    <name>Plains</name>
+    <icon>map/plains</icon>
+  </TileTerrain>
+  <TileTerrain id="forest">
+    <name>Forest</name>
+    <icon>map/forest</icon>
+  </TileTerrain>
+  <TileTerrain id="hills">
+    <name>Hills</name>
+    <icon>map/hills</icon>
+  </TileTerrain>
+</Catalog>
