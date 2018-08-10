@@ -8,6 +8,7 @@ public class TerrainGenerator : MonoBehaviour {
 
     public TerrainGeneratorData terrainGeneratorData { get; private set; }
     public WaterErosion waterErosion { get; private set; }
+    public ThermalErosion thermalErosion { get; private set; }
 
     private Terrain terrainComponent;
 
@@ -25,14 +26,19 @@ public class TerrainGenerator : MonoBehaviour {
         //terrainComponent.terrainData.SetHeights( 0, 0, heightmap );
     }
 
-    public void Step() {
+    public void WaterStep() {
         waterErosion.Waterstep();
+    }
+
+    public void ThermalStep() {
+        thermalErosion.Step();
     }
 
 
     public void Initialize( int numSteps, int resolution ) {
         terrainGeneratorData = new TerrainGeneratorData(resolution);
         waterErosion = new WaterErosion( terrainGeneratorData );
+        thermalErosion = new ThermalErosion(terrainGeneratorData);
     }
 
     public void UpdateTerrain() {

@@ -39,12 +39,14 @@ public class TerrainGeneratorInspector : Editor {
         if(GUILayout.Button( "Init flat" )) {
             tg.Initialize( numSteps, resolution );
             UpdateImage( tg.terrainGeneratorData.heighmap, tg.waterErosion.waterHeight );
+            tg.UpdateTerrain();
         }
 
         if(GUILayout.Button( "Init noisy" )) {
             tg.Initialize( numSteps, resolution );
             tg.GenerateHeightMap( numSteps );
             UpdateImage( tg.terrainGeneratorData.heighmap, tg.waterErosion.waterHeight );
+            tg.UpdateTerrain();
         }
 
         GUILayout.EndHorizontal();
@@ -60,17 +62,21 @@ public class TerrainGeneratorInspector : Editor {
         }
         GUILayout.EndHorizontal();*/
 
-        
-        if(GUILayout.Button( "Water step" )) {
-            GUILayout.BeginHorizontal();
-            tg.Step();
-            GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button( "Water step" )) {
+            tg.WaterStep();
             UpdateImage( tg.terrainGeneratorData.heighmap, tg.waterErosion.waterHeight );
             tg.UpdateTerrain();
         }
-        
+        if (GUILayout.Button("Thermal step"))
+        {
+            tg.ThermalStep();
+            UpdateImage(tg.terrainGeneratorData.heighmap, tg.waterErosion.waterHeight);
+            tg.UpdateTerrain();
+        }
+        GUILayout.EndHorizontal();
 
-        if(heightmapImage != null) {
+        if (heightmapImage != null) {
             //GUILayout.BeginHorizontal();
             //GUILayout.Box( heightmapImage );
             // GUILayout.EndHorizontal();
