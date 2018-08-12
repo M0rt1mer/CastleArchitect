@@ -3,7 +3,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using System;
 
-public class ThermalErosion
+public class ThermalErosion : ITerrainGeneratorStep
 {
 
     private TerrainGeneratorData terrain;
@@ -13,9 +13,10 @@ public class ThermalErosion
         this.terrain = terrain;
     }
 
-    public void Step() {
+    public DisposableJobHandle Step( NativeArray<float> output ) {
 
-        int size = terrain.heighmap.GetLength(0);
+        NativeArray<float> heightmap = terrain.heightmap;
+        int size = terrain.size;
 
         NativeArray<float> localChanges = new NativeArray<float>(size * size, Allocator.Temp);
         NativeArray<float> localChangesW = new NativeArray<float>(size * size, Allocator.Temp);
@@ -29,10 +30,6 @@ public class ThermalErosion
         NativeSlice<float> eastInverseSlice = new NativeSlice<float>(localChangesE, 1);
         NativeSlice<float> southInverseSlice = new NativeSlice<float>(localChangesS, size);
 
-        float[] intermediate = new float[size * size];
-        Buffer.BlockCopy(terrain.heighmap, 0, intermediate, 0, size * size);
-        NativeArray<float> heightmap = new NativeArray<float>(intermediate, Allocator.Temp);
-
         CalcErosionStep calcStep = new CalcErosionStep()
         {
             size = size,
@@ -42,13 +39,13 @@ public class ThermalErosion
             westChanges = westSlice,
             northChanges = northSlice,
             southChanges = localChangesS,
-            minSlopeForErosion = 0.00f,
-            erosionCoeff = 0.50f
+            minSlopeForErosion = 0.01f,
+            erosionCoeff = 0.05f
         };
         ApplyErosionStep applyStep = new ApplyErosionStep()
         {
             size = size,
-            heightmap = heightmap,
+            output = output,
             localChanges = localChanges,
             eastChanges = eastInverseSlice,
             westChanges = localChangesW,
@@ -59,17 +56,7 @@ public class ThermalErosion
         JobHandle calcStepHandle = calcStep.Schedule(size * size, 512);
         JobHandle applyStepHandle = applyStep.Schedule(size * size, 512, calcStepHandle);
 
-        applyStepHandle.Complete();
-
-        heightmap.CopyTo(intermediate);
-        Buffer.BlockCopy(intermediate, 0, terrain.heighmap, 0, size * size);
-
-        localChanges.Dispose();
-        localChangesE.Dispose();
-        localChangesW.Dispose();
-        localChangesS.Dispose();
-        localChangesN.Dispose();
-        heightmap.Dispose();
+        return new DisposableJobHandle( applyStepHandle, new IDisposable[] { localChanges, localChangesW, localChangesE, localChangesS, localChangesN } );
     }
     
     private struct CalcErosionStep : IJobParallelFor
@@ -94,13 +81,13 @@ public class ThermalErosion
             if (index < size || index >= (size * size) - size || (index % size) == 0 || (index % size) == size - 1)
                 return;
 
-            float westDiff = heightmap[index] - heightmap[index - 1] - minSlopeForErosion;
+            float westDiff = heightmap[index] - heightmap[index + 1] - minSlopeForErosion;
             westDiff = (westDiff > 0) ? westDiff : 0;
-            float eastDiff = heightmap[index] - heightmap[index + 1] - minSlopeForErosion;
+            float eastDiff = heightmap[index] - heightmap[index - 1] - minSlopeForErosion;
             eastDiff = (eastDiff > 0) ? eastDiff : 0;
-            float northDiff = heightmap[index] - heightmap[index - size] - minSlopeForErosion;
+            float northDiff = heightmap[index] - heightmap[index + size] - minSlopeForErosion;
             northDiff = (northDiff > 0) ? northDiff : 0;
-            float southDiff = heightmap[index] - heightmap[index + size] - minSlopeForErosion;
+            float southDiff = heightmap[index] - heightmap[index - size] - minSlopeForErosion;
             southDiff = (southDiff > 0) ? southDiff : 0;
 
             float maxDiffEW = westDiff > eastDiff ? westDiff : eastDiff;
@@ -122,7 +109,7 @@ public class ThermalErosion
 
     private struct ApplyErosionStep : IJobParallelFor
     {
-        public NativeArray<float> heightmap;
+        public NativeArray<float> output;
 
         [ReadOnly]
         public NativeArray<float> localChanges;
@@ -142,7 +129,7 @@ public class ThermalErosion
             //skip for edge - it is just padding
             if (index < size || index >= (size * size) - size || (index % size) == 0 || (index % size) == size - 1)
                 return;
-            heightmap[index] += localChanges[index] + eastChanges[index] + westChanges[index] + northChanges[index] + southChanges[index];
+            output[index] = localChanges[index] + eastChanges[index] + westChanges[index] + northChanges[index] + southChanges[index];
         }
     }
 
