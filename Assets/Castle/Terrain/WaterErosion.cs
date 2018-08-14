@@ -152,9 +152,9 @@ public class WaterErosion : ITerrainGeneratorStep, IDisposable {
             southWaterChanges = waterChangesS,
 
             size = size,
-            speedToErosionCoeff = 0.1f,
+            speedToErosionCoeff = 0.9f,
             rainfall = 0.05f,
-            heightToEvaporationRatio = 0.01f
+            heightToEvaporationRatio = 0.2f
         };
 
         ApplyChangesStep applyJob = new ApplyChangesStep() {
@@ -172,14 +172,16 @@ public class WaterErosion : ITerrainGeneratorStep, IDisposable {
             eastWaterChanges = waterEastInverseSlice,
             westWaterChanges = waterChangesW,
             northWaterChanges = waterChangesN,
-            southWaterChanges = waterSouthInverseSlice
+            southWaterChanges = waterSouthInverseSlice,
+
+            size = size
 
         };
 
         JobHandle calcJobHandle = calcJob.Schedule( size * size, 512 );
         JobHandle applyHandle = applyJob.Schedule( size * size, 512, calcJobHandle );
 
-        Debug.Log("water job scheduled");
+        
 
         return new DisposableJobHandle( applyHandle, new IDisposable[] { heightChanges, heightChangesE, heightChangesW, heightChangesN, heightChangesS, waterChanges, waterChangesE, waterChangesW, waterChangesN, waterChangesS } );
 
@@ -261,23 +263,33 @@ private struct HeightRecord {
 
             //water flowing out of here - 50% of maxdiff (prevents target square from ending up with water higher than this square)
             float totalWaterFlow = 0.5f * maxWaterSlope;
-            
-            //water flow
-            westWaterChanges[index] = totalWaterFlow * (westWaterSlope / totalWaterSlope);
-            eastWaterChanges[index] = totalWaterFlow * (eastWaterSlope / totalWaterSlope);
-            northWaterChanges[index] = totalWaterFlow * (northWaterSlope / totalWaterSlope);
-            southWaterChanges[index] = totalWaterFlow * (southWaterSlope / totalWaterSlope);
-            //calculate water flowing out, rainfall and evaporation
-            waterChanges[index] = -totalWaterFlow + rainfall - (waterHeightmap[index]* heightToEvaporationRatio);
+            if (totalWaterFlow > waterHeightmap[index])
+                totalWaterFlow = waterHeightmap[index];
 
-            //water erosion and deposition
-            // waterSpeed = slope / height
-            // erosion = speed * volume
-            westChanges[index] = westWaterChanges[index] * ( westSlope / waterHeightmap[index] ) * speedToErosionCoeff;
-            eastChanges[index] = eastWaterChanges[index] * ( eastSlope / waterHeightmap[index]) * speedToErosionCoeff;
-            northChanges[index] = northWaterChanges[index] * (northSlope / waterHeightmap[index]) * speedToErosionCoeff;
-            southChanges[index] = southWaterChanges[index] * (southSlope / waterHeightmap[index]) * speedToErosionCoeff;
-            localChanges[index] = -westChanges[index] - eastChanges[index] - northChanges[index] - southChanges[index];
+            //water flow
+            if (totalWaterFlow > 0)
+            {
+                westWaterChanges[index] = totalWaterFlow * (westWaterSlope / totalWaterSlope);
+                eastWaterChanges[index] = totalWaterFlow * (eastWaterSlope / totalWaterSlope);
+                northWaterChanges[index] = totalWaterFlow * (northWaterSlope / totalWaterSlope);
+                southWaterChanges[index] = totalWaterFlow * (southWaterSlope / totalWaterSlope);
+                //calculate water flowing out, rainfall and evaporation
+                waterChanges[index] = -totalWaterFlow + rainfall - (waterHeightmap[index] * heightToEvaporationRatio);
+                if (waterHeightmap[index] + waterChanges[index] < 0)
+                    waterChanges[index] = -waterHeightmap[index];
+
+                //water erosion and deposition
+                // waterSpeed = slope / height
+                // erosion = speed * volume
+                westChanges[index] = westWaterChanges[index] * (westSlope / waterHeightmap[index]) * speedToErosionCoeff;
+                eastChanges[index] = eastWaterChanges[index] * (eastSlope / waterHeightmap[index]) * speedToErosionCoeff;
+                northChanges[index] = northWaterChanges[index] * (northSlope / waterHeightmap[index]) * speedToErosionCoeff;
+                southChanges[index] = southWaterChanges[index] * (southSlope / waterHeightmap[index]) * speedToErosionCoeff;
+                localChanges[index] = -westChanges[index] - eastChanges[index] - northChanges[index] - southChanges[index];
+            }
+            else {
+                waterChanges[index] = rainfall - (waterHeightmap[index] * heightToEvaporationRatio);
+            }
 
         }
 
