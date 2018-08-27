@@ -15,14 +15,26 @@ public class WaterErosion : ITerrainGeneratorStep, IDisposable {
 
     public NativeArray<float> waterHeight { get; private set; }
 
+#if DEBUG
+    public NativeArray<float> waterTerrainHeight { get; private set; }
+#endif
+
     public WaterErosion( TerrainGeneratorData terrain ) {
         this.terrain = terrain;
         waterHeight = new NativeArray<float>( terrain.size * terrain.size, Allocator.Persistent );
+#if DEBUG
+        waterTerrainHeight = new NativeArray<float>( terrain.size * terrain.size, Allocator.Persistent );
+#endif
     }
 
-    public void Dispose() {
+public void Dispose() {
         if(waterHeight.IsCreated)
             waterHeight.Dispose();
+#if DEBUG
+        if(waterTerrainHeight.IsCreated)
+            waterTerrainHeight.Dispose();
+#endif
+
     }
 
     /*public void Waterstep() {
@@ -153,7 +165,7 @@ public class WaterErosion : ITerrainGeneratorStep, IDisposable {
 
             size = size,
             speedToErosionCoeff = 0.9f,
-            rainfall = 0.05f,
+            rainfall = 0.01f,
             heightToEvaporationRatio = 0.2f
         };
 
@@ -175,6 +187,12 @@ public class WaterErosion : ITerrainGeneratorStep, IDisposable {
             southWaterChanges = waterSouthInverseSlice,
 
             size = size
+#if DEBUG
+            , oldHeightMap = terrain.heightmap,
+            treshold = 0.03f,
+            waterToTerrainRatio = 0.3f,
+            waterTerrainMap = waterTerrainHeight
+#endif
 
         };
 
@@ -316,12 +334,25 @@ private struct HeightRecord {
 
         public int size;
 
+#if DEBUG
+        [ReadOnly] public NativeArray<float> oldHeightMap;
+        public NativeArray<float> waterTerrainMap;
+        public float treshold;
+        public float waterToTerrainRatio;
+#endif
+
         public void Execute( int index ) {
             //skip for edge - it is just padding
             if(index < size || index >= (size * size) - size || (index % size) == 0 || (index % size) == size - 1)
                 return;
             totalHeightmapChange[index] = localChanges[index] + eastChanges[index] + westChanges[index] + northChanges[index] + southChanges[index];
             waterHeightmap[index] += waterChanges[index] + eastWaterChanges[index] + westWaterChanges[index] + northWaterChanges[index] + southWaterChanges[index];
+#if DEBUG
+            if(waterHeightmap[index] > treshold)
+                waterTerrainMap[index] = oldHeightMap[index] + totalHeightmapChange[index] + waterHeightmap[index] * waterToTerrainRatio;
+            else
+                waterTerrainMap[index] = oldHeightMap[index] + totalHeightmapChange[index] - 0.01f;
+#endif
         }
     }
 

@@ -15,9 +15,11 @@ public class TerrainGenerator : MonoBehaviour {
     public ThermalErosion thermalErosion { get; private set; }
 
     private Terrain terrainComponent;
+    private Terrain waterTerrainComponent;
 
     void Start() {
         terrainComponent = GetComponent<Terrain>();
+        waterTerrainComponent = transform.GetChild( 0 ).GetComponent<Terrain>();
     }
 
     public void GenerateHeightMap() {
@@ -42,14 +44,21 @@ public class TerrainGenerator : MonoBehaviour {
 
     public void UpdateTerrain() {
 
-        Vector3 sizeBackup = terrainComponent.terrainData.size;
+        AssignHeighmap( terrainComponent, terrainGeneratorData.heightmap, terrainGeneratorData.size );
+        AssignHeighmap( waterTerrainComponent, waterErosion.waterTerrainHeight, terrainGeneratorData.size );
 
-        float[,] heightmap = new float[terrainGeneratorData.size, terrainGeneratorData.size];
-        Buffer.BlockCopy( terrainGeneratorData.heightmap.ToArray(), 0, heightmap, 0, terrainGeneratorData.size * terrainGeneratorData.size * sizeof( float ) );
-        terrainComponent.terrainData.heightmapResolution = terrainGeneratorData.size;
-        terrainComponent.terrainData.SetHeights( 0, 0, heightmap );
+    }
 
-        terrainComponent.terrainData.size = sizeBackup;
+    private static void AssignHeighmap( Terrain component, NativeArray<float> data, int size )
+    {
+        Vector3 sizeBackup = component.terrainData.size;
+
+        float[,] heightmap = new float[size, size];
+        Buffer.BlockCopy( data.ToArray(), 0, heightmap, 0, size * size * sizeof( float ) );
+        component.terrainData.heightmapResolution = size;
+        component.terrainData.SetHeights( 0, 0, heightmap );
+
+        component.terrainData.size = sizeBackup;
     }
 
     public void OnBeforeSerialize() {
@@ -71,17 +80,26 @@ public class TerrainGenerator : MonoBehaviour {
     }
 
     public void SimulationStep() {
-        SimulationStep( thermalErosion, waterErosion );
+        SimulationStep( true, thermalErosion, waterErosion );
     }
 
-    private void SimulationStep( params ITerrainGeneratorStep[] steps ) {
+    /// <summary>
+    /// Runs a single disposable
+    /// </summary>
+    /// <param name="steps"></param>
+    /// <param name="dispose"></param>
+    /// <returns></returns>
+    private DisposableJobHandle SimulationStep( bool dispose = true, params ITerrainGeneratorStep[] steps ) {
 
         DisposableJobHandle handle = ScheduleAddOutputs( steps );
         Assert.IsNotNull( handle );
 
         handle.job.Complete();
-        handle.Dispose();
+        if(dispose)
+            handle.Dispose();
         UpdateTerrain();
+
+        return handle;
         
     }
 
@@ -136,6 +154,7 @@ public class TerrainGenerator : MonoBehaviour {
             heighmap[index] += output1[index] + output2[index];
         }
     }
+
 }
 
 public interface ITerrainGeneratorStep {
