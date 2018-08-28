@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Jobs;
 using UnityEngine;
 using System.Linq;
+using Unity.Collections;
 
 public class DisposableJobHandle : IDisposable {
 
@@ -32,4 +33,5 @@ public static class JobHandleExtensions {
     public static DisposableJobHandle LinkResources( this JobHandle handle, IEnumerable<IDisposable> resources ) {
         return new DisposableJobHandle( handle, resources );
     }
+
 }

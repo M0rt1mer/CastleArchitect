@@ -28,11 +28,11 @@ public class TerrainGenerator : MonoBehaviour {
     }
 
     public void WaterStep() {
-        SimulationStep( waterErosion );
+        SimulationStep( true, waterErosion );
     }
 
     public void ThermalStep() {
-        SimulationStep( thermalErosion );
+        SimulationStep( true, thermalErosion );
     }
 
     public void Initialize( int numSteps, int resolution ) {
@@ -117,13 +117,13 @@ public class TerrainGenerator : MonoBehaviour {
                 return new AddSingleOutput() {
                     output = partialHeightmaps[0],
                     heighmap = terrainGeneratorData.heightmap
-                }.Schedule( totalJopSize, 512, handles[0].job ).LinkResources( handles, partialHeightmaps.Cast<IDisposable>() ) ;
+                }.Schedule( totalJopSize, 512, handles[0].job ).LinkResources( handles, partialHeightmaps.AttachDebugInfo("Partial heightmap {0}") ) ;
             case 2:
                 return new AddTwoOutputs() {
                     output1 = partialHeightmaps[0],
                     output2 = partialHeightmaps[1],
                     heighmap = terrainGeneratorData.heightmap
-                }.Schedule( totalJopSize, 512, JobHandle.CombineDependencies(handles[0].job, handles[1].job ) ).LinkResources( handles, partialHeightmaps.Cast<IDisposable>() );
+                }.Schedule( totalJopSize, 512, JobHandle.CombineDependencies(handles[0].job, handles[1].job ) ).LinkResources( handles, partialHeightmaps.AttachDebugInfo( "Partial heightmap {0}" ) );
         }
 
         return null;
